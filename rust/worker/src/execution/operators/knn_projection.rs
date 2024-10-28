@@ -3,7 +3,7 @@ use thiserror::Error;
 use tonic::async_trait;
 use tracing::trace;
 
-use crate::execution::operator::Operator;
+use crate::execution::operator::{Operator, OperatorType};
 
 use super::{
     fetch_log::FetchLogOutput,
@@ -64,6 +64,10 @@ impl ChromaError for KnnProjectionError {
 #[async_trait]
 impl Operator<KnnProjectionInput, KnnProjectionOutput> for KnnProjectionOperator {
     type Error = KnnProjectionError;
+
+    fn get_type(&self) -> OperatorType {
+        OperatorType::IO
+    }
 
     async fn run(
         &self,
