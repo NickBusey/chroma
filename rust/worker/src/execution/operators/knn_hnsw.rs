@@ -1,3 +1,4 @@
+use chroma_distance::DistanceFunction;
 use chroma_error::ChromaError;
 use chroma_types::SignedRoaringBitmap;
 use thiserror::Error;
@@ -8,7 +9,7 @@ use crate::execution::operator::Operator;
 use super::{
     fetch_segment::{FetchSegmentError, FetchSegmentOutput},
     filter::FilterOutput,
-    knn::{Distance, KnnOperator},
+    knn::{normalize, Distance, KnnOperator},
 };
 
 #[derive(Debug)]
@@ -69,10 +70,19 @@ impl Operator<KnnHnswInput, KnnHnswOutput> for KnnOperator {
             }
         };
 
+        let embedding_vector;
+        let embedding =
+            if let DistanceFunction::Cosine = input.segments.knn_config()?.distance_function {
+                embedding_vector = normalize(&self.embedding);
+                &embedding_vector
+            } else {
+                &self.embedding
+            };
+
         let distances = match input.segments.knn_segment_reader().await? {
             Some(reader) => {
                 let (oids, distances) =
-                    reader.query(&self.embedding, self.fetch as usize, &allowed, &disallowed)?;
+                    reader.query(embedding, self.fetch as usize, &allowed, &disallowed)?;
                 oids.into_iter()
                     .map(|oid| oid as u32)
                     .zip(distances)
